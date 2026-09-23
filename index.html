@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="pt-PT">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automação - Tratamento de Cotações</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #0056b3;
+            --bg-color: #f4f7f6;
+            --box-bg: #ffffff;
+            --text-color: #333;
+            --highlight-color: #e9ecef;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding: 20px;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 850px;
+            margin: 0 auto;
+            background: var(--box-bg);
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+            padding-bottom: 10px;
+        }
+
+        .section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 5px solid var(--primary-color);
+        }
+
+        h2 {
+            font-size: 1.1em;
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 15px;
+        }
+
+        .input-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        input[type="file"], input[type="date"], input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+            font-family: inherit;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .date-container {
+            display: flex;
+            gap: 15px;
+        }
+
+        .date-container > div {
+            flex: 1;
+        }
+
+        .btn-process {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            margin-top: 20px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .btn-process:hover {
+            background-color: #218838;
+        }
+
+        .btn-process:disabled {
+            background-color: #88c796;
+            cursor: not-allowed;
+        }
+
+        #status-msg {
+            text-align: center;
+            margin-top: 20px;
+            font-weight: bold;
+            font-size: 1.1em;
+        }
+
+        .relatorio {
+            background: var(--highlight-color);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-size: 0.95em;
+            text-align: left;
+            display: none;
+        }
+        .relatorio ul {
+            margin: 5px 0 0 0;
+            padding-left: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>AUTOMAÇÃO - ENVIO DE COTAÇÕES</h1>
+
+        <div class="section">
+            <h2>1. Selecione os Ficheiros</h2>
+            <div class="input-group">
+                <label>Ficheiro Gerenciamento (Base de Clientes):</label>
+                <input type="file" id="file-gerenciamento" accept=".csv, .xlsx, .xls">
+            </div>
+            <div class="input-group">
+                <label>Ficheiro MSS (Base):</label>
+                <input type="file" id="file-mss" accept=".csv, .xlsx, .xls">
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>2. Filtro de Data (Coluna H)</h2>
+            <div class="date-container">
+                <div>
+                    <label>De (7 dias atrás):</label>
+                    <input type="date" id="data-inicio">
+                </div>
+                <div>
+                    <label>Até (Hoje):</label>
+                    <input type="date" id="data-fim">
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>3. Textos Padrão para E-mail</h2>
+            <div class="input-group">
+                <label>Título do E-mail:</label>
+                <input type="text" id="titulo-email" placeholder="Ex: Status Cotação Essentra" value="Status Cotacao Essentra">
+            </div>
+            <div class="input-group">
+                <label>Texto do E-mail (Corpo):</label>
+                <textarea id="texto-email" placeholder="Digite o texto padrão que será repetido em todas as linhas..."></textarea>
+            </div>
+        </div>
+
+        <button class="btn-process" id="btn-process">Processar e Descarregar Ficheiro Final</button>
+        <div id="status-msg"></div>
+        
+        <div class="relatorio" id="relatorio-box">
+            <strong>Resumo do Processamento:</strong>
+            <ul id="relatorio-lista"></ul>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dataInicioInput = document.getElementById('data-inicio');
+            const dataFimInput = document.getElementById('data-fim');
+            
+            const hoje = new Date();
+            const seteDiasAtras = new Date();
+            seteDiasAtras.setDate(hoje.getDate() - 7);
+
+            dataFimInput.value = hoje.toISOString().split('T')[0];
+            dataInicioInput.value = seteDiasAtras.toISOString().split('T')[0];
+        });
+
+        function cleanID(idStr) {
+            if (idStr === null || idStr === undefined) return "";
+            let str = String(idStr).trim();
+            str = str.replace(/\.0+$/, ''); 
+            
+            if (/^\d+$/.test(str)) {
+                return String(parseInt(str, 10));
+            }
+            return str.toUpperCase();
+        }
+
+        document.getElementById('btn-process').addEventListener('click', async () => {
+            const fileGerenciamento = document.getElementById('file-gerenciamento').files[0];
+            const fileMss = document.getElementById('file-mss').files[0];
+            const dataInicioStr = document.getElementById('data-inicio').value;
+            const dataFimStr = document.getElementById('data-fim').value;
+            const tituloEmailInput = document.getElementById('titulo-email').value;
+            const textoEmailInput = document.getElementById('texto-email').value;
+            
+            const statusMsg = document.getElementById('status-msg');
+            const btnProcess = document.getElementById('btn-process');
+            const relatorioBox = document.getElementById('relatorio-box');
+            const relatorioLista = document.getElementById('relatorio-lista');
+
+            if (!fileGerenciamento || !fileMss) {
+                alert("Por favor, selecione os dois ficheiros antes de continuar.");
+                return;
+            }
+
+            try {
+                btnProcess.disabled = true;
+                relatorioBox.style.display = 'none';
+                statusMsg.style.color = '#333';
+                
+                statusMsg.textContent = "⏳ A ler Ficheiro de Gerenciamento (Mapeamento Inteligente)...";
+                await new Promise(r => setTimeout(r, 100)); 
+
+                // 1. LER GERENCIAMENTO DE FORMA INTELIGENTE (Procura cabeçalhos por nome)
+                const dataGerenciamento = await fileGerenciamento.arrayBuffer();
+                const wbGerenciamento = XLSX.read(dataGerenciamento, { type: 'array' });
+                
+                let sheetNameGerenciamento = wbGerenciamento.SheetNames.find(n => n.toLowerCase().includes('base de clientes')) || wbGerenciamento.SheetNames[0];
+                const wsGerenciamento = wbGerenciamento.Sheets[sheetNameGerenciamento];
+                const rowsGerenciamento = XLSX.utils.sheet_to_json(wsGerenciamento, { header: 1, defval: "" });
+                
+                let headerRowIdx = -1;
+                for(let i=0; i<10; i++) {
+                    if(rowsGerenciamento[i] && rowsGerenciamento[i].some(c => String(c).toUpperCase().includes("CCUST"))) {
+                        headerRowIdx = i;
+                        break;
+                    }
+                }
+
+                const csalMap = new Map();
+                
+                if (headerRowIdx !== -1) {
+                    const headers = rowsGerenciamento[headerRowIdx].map(h => String(h).toUpperCase().trim());
+                    const idxID = headers.indexOf("CCUST");
+                    const idxCSAL = headers.indexOf("CSAL");
+
+                    if (idxID !== -1 && idxCSAL !== -1) {
+                        for (let i = headerRowIdx + 1; i < rowsGerenciamento.length; i++) {
+                            const row = rowsGerenciamento[i];
+                            if (row.length === 0) continue;
+                            const idVal = cleanID(row[idxID]);
+                            const csalVal = String(row[idxCSAL] || "").trim();
+                            if (idVal) csalMap.set(idVal, csalVal);
+                        }
+                    } else {
+                        alert("Não foi possível encontrar as colunas CCUST ou CSAL no ficheiro de Gerenciamento.");
+                    }
+                }
+
+                // 2. LER MSS DE FORMA INTELIGENTE (Procura cabeçalhos por nome)
+                statusMsg.textContent = "⏳ A ler Ficheiro MSS base...";
+                await new Promise(r => setTimeout(r, 100));
+
+                const dataMss = await fileMss.arrayBuffer();
+                const wbMss = XLSX.read(dataMss, { type: 'array', cellDates: true });
+                
+                let sheetNameMss = null;
+                for (let i = 0; i < wbMss.SheetNames.length; i++) {
+                    const wsTemp = wbMss.Sheets[wbMss.SheetNames[i]];
+                    const primeiraLinha = XLSX.utils.sheet_to_json(wsTemp, { header: 1 })[0] || [];
+                    if (primeiraLinha.some(col => String(col).toLowerCase().includes('cotacao') || String(col).toLowerCase().includes('email contato'))) {
+                        sheetNameMss = wbMss.SheetNames[i];
+                        break;
+                    }
+                }
+                if (!sheetNameMss) sheetNameMss = wbMss.SheetNames[0]; 
+
+                const wsMss = wbMss.Sheets[sheetNameMss];
+                const rowsMss = XLSX.utils.sheet_to_json(wsMss, { header: 1, defval: "" });
+
+                let headerMssIdx = -1;
+                for(let i=0; i<10; i++) {
+                    if(rowsMss[i] && rowsMss[i].some(c => String(c).toUpperCase().includes("COTACAO"))) {
+                        headerMssIdx = i;
+                        break;
+                    }
+                }
+
+                const hMss = rowsMss[headerMssIdx].map(h => String(h).toUpperCase().trim());
+                
+                // Mapeamento dinâmico: se a coluna mudar de lugar, o programa descobre onde está
+                const cCotacao = hMss.indexOf("COTACAO") !== -1 ? hMss.indexOf("COTACAO") : 0;
+                const cID = hMss.indexOf("ID") !== -1 ? hMss.indexOf("ID") : 2;
+                const cContato = hMss.indexOf("CONTATO") !== -1 ? hMss.indexOf("CONTATO") : 4;
+                const cEmail = hMss.indexOf("EMAIL CONTATO") !== -1 ? hMss.indexOf("EMAIL CONTATO") : 6;
+                const cData = hMss.indexOf("DATA CRIACAO") !== -1 ? hMss.indexOf("DATA CRIACAO") : 7;
+                const cStatus = hMss.indexOf("STATUS") !== -1 ? hMss.indexOf("STATUS") : 9;
+                const cComentarios = hMss.indexOf("COMENTARIOS III") !== -1 ? hMss.indexOf("COMENTARIOS III") : 10;
+                const cTexto = hMss.indexOf("TEXTO1") !== -1 ? hMss.indexOf("TEXTO1") : 17;
+
+                const dtInicio = new Date(dataInicioStr + "T00:00:00");
+                const dtFim = new Date(dataFimStr + "T23:59:59");
+                
+                const csalsParaRemover = ['335', '336', '337', '339', '352', 'N/A', ''];
+                
+                const mapVendedores = {
+                    '338': 'Matheus Silva',
+                    '340': 'Pablo Silva',
+                    '346': 'Cristiana Roseto',
+                    '343': 'Juliana Martins',
+                    '344': 'Juliana Martins'
+                };
+
+                let contadores = {
+                    totalInicial: rowsMss.length - (headerMssIdx + 1), 
+                    removidosStatus: 0,
+                    removidosComentarios: 0,
+                    removidosData: 0,
+                    removidosCSAL: 0,
+                    removidosCSAL_NA: 0, 
+                    removidosEmail: 0,
+                    sucesso: 0
+                };
+
+                let idsDedoDuro = new Set(); 
+
+                const dadosNovoArquivo = [];
+                
+                dadosNovoArquivo.push([
+                    "ID", "NOME DO VENDEDOR", "CSAL", "N COTAÇÃO", 
+                    "EMAIL", "NOME", "COTACAO", "TITULO DO EMAIL", "TEXTO"
+                ]);
+
+                statusMsg.textContent = "⏳ A iniciar filtros e limpeza de texto...";
+
+                // 3. LAÇO DE REPETIÇÃO
+                for (let i = headerMssIdx + 1; i < rowsMss.length; i++) {
+                    
+                    if (i % 2000 === 0) {
+                        statusMsg.textContent = `⏳ A processar linha ${i} de ${rowsMss.length}...`;
+                        await new Promise(r => setTimeout(r, 0)); 
+                    }
+
+                    let row = rowsMss[i];
+                    if (row.length === 0 || row.every(cell => cell === "")) continue;
+
+                    const cotacaoOriginal = String(row[cCotacao] || "").trim(); 
+                    const idMss = cleanID(row[cID]);                       
+                    const nomeContatoCompleto = String(row[cContato] || "").trim(); 
+                    let emailContato = String(row[cEmail] || "").trim();      
+                    const dataCriacao = row[cData];                          
+                    const status = String(row[cStatus] || "").toLowerCase();   
+                    const comentarios = String(row[cComentarios] || "").trim();    
+                    const textoCotacaoOriginal = String(row[cTexto] || "");  
+
+                    // --- FILTROS BÁSICOS ---
+                    if (status.includes('business won') || status.includes('business lost')) { contadores.removidosStatus++; continue; }
+                    
+                    if (comentarios !== "") { 
+                        if (!comentarios.includes('[ Standalone Lines ]')) {
+                            contadores.removidosComentarios++; 
+                            continue; 
+                        }
+                    }
+
+                    // --- FILTRO DE DATAS MAIS ROBUSTO ---
+                    if (dataCriacao) {
+                        let dataLinha = null;
+                        if (dataCriacao instanceof Date) { 
+                            dataLinha = dataCriacao; 
+                        } else if (typeof dataCriacao === 'string') {
+                            const p = dataCriacao.split(/[\/\-]/); 
+                            if (p.length >= 3) {
+                                let ano = p[2].substring(0,4);
+                                if (ano.length === 2) ano = "20" + ano; 
+                                
+                                let mes = parseInt(p[1], 10);
+                                let dia = parseInt(p[0], 10);
+                                if (mes > 12) { // Corrige caso o Excel converta para formato Americano (MM/DD/YYYY)
+                                    mes = parseInt(p[0], 10);
+                                    dia = parseInt(p[1], 10);
+                                }
+                                dataLinha = new Date(ano, mes - 1, dia, 12, 0, 0);
+                            }
+                        } else if (typeof dataCriacao === 'number') {
+                             dataLinha = new Date(Math.round((dataCriacao - 25569) * 86400 * 1000));
+                        }
+
+                        if (dataLinha instanceof Date && !isNaN(dataLinha)) {
+                            if (dataLinha < dtInicio || dataLinha > dtFim) { contadores.removidosData++; continue; }
+                        }
+                    }
+
+                    // --- CRUZAMENTO DE CSAL ---
+                    let csalEncontrado = "N/A";
+                    if (idMss && csalMap.has(idMss)) {
+                        csalEncontrado = String(csalMap.get(idMss)).trim();
+                    }
+                    
+                    if (csalEncontrado === "N/A" || csalEncontrado === "") {
+                        contadores.removidosCSAL_NA++;
+                        if (idsDedoDuro.size < 5) idsDedoDuro.add(idMss || "Vazio");
+                        continue;
+                    }
+                    
+                    if (csalsParaRemover.includes(csalEncontrado)) { 
+                        contadores.removidosCSAL++; 
+                        continue; 
+                    }
+
+                    // --- FILTRO DE EMAIL ---
+                    if (emailContato.toLowerCase().includes('@essentra')) { contadores.removidosEmail++; continue; }
+                    emailContato = emailContato.replace(/,/g, '.');
+                    if (!emailContato.includes('@')) { contadores.removidosEmail++; continue; }
+
+                    // --- TRATAMENTOS DE TEXTO ---
+                    const nomeVendedor = mapVendedores[csalEncontrado] || "Vendedor não mapeado";
+
+                    let primeiroNome = nomeContatoCompleto.split(/[\s/]+/)[0];
+                    if (primeiroNome.length > 0) {
+                        primeiroNome = primeiroNome.charAt(0).toUpperCase() + primeiroNome.slice(1).toLowerCase();
+                    }
+
+                    let cotacaoLimpa = textoCotacaoOriginal;
+                    const indexInicio = textoCotacaoOriginal.toUpperCase().indexOf("|LN");
+                    
+                    if (indexInicio !== -1) {
+                        cotacaoLimpa = textoCotacaoOriginal.substring(indexInicio).trim();
+                        cotacaoLimpa = cotacaoLimpa.split(/Aguardo seu|Atenciosamente/i)[0].trim();
+                    } else {
+                        cotacaoLimpa = cotacaoLimpa.replace(/Cotação Nº[^\n]*/gi, '').trim();
+                        cotacaoLimpa = cotacaoLimpa.replace(/Total R\$[^\n]*/gi, '').trim();
+                        cotacaoLimpa = cotacaoLimpa.replace(/Aguardo seu retorno[^\n]*/gi, '').trim();
+                        cotacaoLimpa = cotacaoLimpa.replace(/Atenciosamente[^\n]*/gi, '').trim();
+                    }
+
+                    dadosNovoArquivo.push([
+                        idMss,               
+                        nomeVendedor,        
+                        csalEncontrado,      
+                        cotacaoOriginal,     
+                        emailContato,        
+                        primeiroNome,        
+                        cotacaoLimpa,        
+                        tituloEmailInput,    
+                        textoEmailInput      
+                    ]);
+
+                    contadores.sucesso++;
+                }
+
+                // 4. GERAR EXCEL FINAL
+                if (contadores.sucesso === 0) {
+                    statusMsg.style.color = 'red';
+                    statusMsg.textContent = "Atenção: Nenhuma cotação sobrou após os filtros. Verifique o relatório.";
+                } else {
+                    statusMsg.textContent = "✅ Processamento finalizado! A gerar ficheiro Excel...";
+                    await new Promise(r => setTimeout(r, 100)); 
+
+                    const newWs = XLSX.utils.aoa_to_sheet(dadosNovoArquivo);
+                    
+                    newWs['!cols'] = [
+                        { wch: 12 }, { wch: 20 }, { wch: 8 }, { wch: 15 }, 
+                        { wch: 35 }, { wch: 15 }, { wch: 60 }, { wch: 30 }, { wch: 40 } 
+                    ];
+
+                    const newWb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(newWb, newWs, "Cotacoes_Finais");
+                    XLSX.writeFile(newWb, "Arquivo_Final_Cotacoes.xlsx");
+                    
+                    statusMsg.style.color = 'green';
+                    statusMsg.textContent = `Sucesso! Ficheiro Final descarregado com ${contadores.sucesso} cotações prontas.`;
+                }
+
+                // EXIBIR RELATÓRIO
+                let exemplosNaoEncontrados = Array.from(idsDedoDuro).join(', ');
+                let linhaDedoDuro = exemplosNaoEncontrados ? `<br><small style="color: #d9534f;">(Exemplos procurados e não achados: <b>${exemplosNaoEncontrados}</b>)</small>` : '';
+
+                relatorioLista.innerHTML = `
+                    <li><strong>Total de Clientes mapeados na Base (Gerenciamento):</strong> <span style="color:blue;">${csalMap.size}</span></li>
+                    <li><strong>Total de linhas originais lidas no MSS:</strong> ${contadores.totalInicial}</li>
+                    <li><strong>Removidas por Status (Won/Lost):</strong> ${contadores.removidosStatus}</li>
+                    <li><strong>Removidas por possuir Comentário (TimeStamp):</strong> ${contadores.removidosComentarios}</li>
+                    <li><strong>Removidas por estar fora do Período de Data:</strong> ${contadores.removidosData}</li>
+                    <li><strong>Removidas por CSAL "N/A" (Não achou ID):</strong> ${contadores.removidosCSAL_NA} ${linhaDedoDuro}</li>
+                    <li><strong>Removidas pelas carteiras CSAL bloqueadas (335, 336...):</strong> ${contadores.removidosCSAL}</li>
+                    <li><strong>Removidas por e-mail inválido, em branco ou @essentra:</strong> ${contadores.removidosEmail}</li>
+                    <li><strong style="color: green;">Total de Cotações Geradas no Novo Arquivo: ${contadores.sucesso}</strong></li>
+                `;
+                relatorioBox.style.display = 'block';
+                btnProcess.disabled = false;
+
+            } catch (error) {
+                console.error(error);
+                statusMsg.style.color = 'red';
+                statusMsg.textContent = "Erro ao processar. Verifique os ficheiros e tente novamente.";
+                btnProcess.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
