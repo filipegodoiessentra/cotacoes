@@ -423,7 +423,8 @@
                     }
 
                     // --- FILTRO DE EMAIL ---
-                    if (emailContato.toLowerCase().includes('@essentra')) { contadores.removidosEmail++; continue; }
+                    const emailLowerCase = emailContato.toLowerCase();
+                    if (emailLowerCase.includes('@essentra') || emailLowerCase.includes('@tkelevator')) { contadores.removidosEmail++; continue; }
                     emailContato = emailContato.replace(/,/g, '.');
                     if (!emailContato.includes('@')) { contadores.removidosEmail++; continue; }
 
@@ -498,7 +499,7 @@
                     <li><strong>Removidas por estar fora do Período de Data:</strong> ${contadores.removidosData}</li>
                     <li><strong>Removidas por CSAL "N/A" (Não achou ID):</strong> ${contadores.removidosCSAL_NA} ${linhaDedoDuro}</li>
                     <li><strong>Removidas pelas carteiras CSAL bloqueadas (335, 336...):</strong> ${contadores.removidosCSAL}</li>
-                    <li><strong>Removidas por e-mail inválido, em branco ou @essentra:</strong> ${contadores.removidosEmail}</li>
+                    <li><strong>Removidas por e-mail inválido, em branco, @essentra ou @tkelevator:</strong> ${contadores.removidosEmail}</li>
                     <li><strong style="color: green;">Total de Cotações Geradas no Novo Arquivo: ${contadores.sucesso}</strong></li>
                 `;
                 relatorioBox.style.display = 'block';
