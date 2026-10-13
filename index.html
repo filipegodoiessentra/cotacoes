@@ -174,7 +174,9 @@
                     <input type="date" id="data-inicio">
                 </div>
                 <div>
-                    <label>Até (Hoje):</label>
+                    <!-- INÍCIO DA ALTERAÇÃO / ALTERADO EM 13/10 (Data final padrão): Ajuste da label -->
+                    <label>Até:</label>
+                    <!-- FIM DA ALTERAÇÃO -->
                     <input type="date" id="data-fim">
                 </div>
             </div>
@@ -294,8 +296,11 @@
             const seteDiasAtras = new Date();
             seteDiasAtras.setDate(hoje.getDate() - 7);
 
-            dataFimInput.value = hoje.toISOString().split('T')[0];
-            dataInicioInput.value = seteDiasAtras.toISOString().split('T')[0];
+            // INÍCIO DA ALTERAÇÃO / ALTERADO EM 13/10 (Data final padrão): Ambas recebem a data de 7 dias atrás
+            const dataSeteDiasStr = seteDiasAtras.toISOString().split('T')[0];
+            dataFimInput.value = dataSeteDiasStr;
+            dataInicioInput.value = dataSeteDiasStr;
+            // FIM DA ALTERAÇÃO
 
             document.getElementById('select-modelo-email').addEventListener('change', function() {
                 const modeloSelecionado = this.value;
@@ -368,11 +373,9 @@
                 document.getElementById('btnToggleConfig').textContent = '⚙️ Configurar CSALs';
             };
 
-            // INÍCIO DA ALTERAÇÃO / ALTERADO EM 13/10 (Padrão D7 V1): Carregar modelo D7 V1 no carregamento da página
             const selectModelo = document.getElementById('select-modelo-email');
             selectModelo.value = 'd7v1';
             selectModelo.dispatchEvent(new Event('change'));
-            // FIM DA ALTERAÇÃO
         });
 
         function cleanID(idStr) {
