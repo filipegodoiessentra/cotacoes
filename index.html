@@ -7,7 +7,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root {
-            --primary-color: #0056b3;
+            /* INÍCIO DA ALTERAÇÃO / ALTERADO EM 13/10 (Identidade Visual): Mudança da cor primária para o vermelho Essentra */
+            --primary-color: #D0111F;
+            /* FIM DA ALTERAÇÃO */
             --bg-color: #f4f7f6;
             --box-bg: #ffffff;
             --text-color: #333;
@@ -37,6 +39,7 @@
             color: var(--primary-color);
             border-bottom: 2px solid var(--primary-color);
             padding-bottom: 10px;
+            margin-top: 10px;
         }
 
         .section {
@@ -92,7 +95,9 @@
             width: 100%;
             padding: 15px;
             margin-top: 20px;
-            background-color: #28a745;
+            /* INÍCIO DA ALTERAÇÃO / ALTERADO EM 13/10 (Identidade Visual): Botão processar com a cor da marca */
+            background-color: var(--primary-color);
+            /* FIM DA ALTERAÇÃO */
             color: white;
             border: none;
             border-radius: 5px;
@@ -103,11 +108,13 @@
         }
 
         .btn-process:hover {
-            background-color: #218838;
+            /* INÍCIO DA ALTERAÇÃO / ALTERADO EM 13/10 (Identidade Visual): Hover mais escuro do vermelho */
+            background-color: #a00e18;
+            /* FIM DA ALTERAÇÃO */
         }
 
         .btn-process:disabled {
-            background-color: #88c796;
+            background-color: #e07a82;
             cursor: not-allowed;
         }
 
@@ -152,6 +159,12 @@
 <body>
 
     <div class="container">
+        <!-- INÍCIO DA ALTERAÇÃO / ALTERADO EM 13/10 (Identidade Visual): Adição do Logo Centralizado -->
+        <div style="text-align: center;">
+            <img src="https://essentra.sharepoint.com/sites/TheWorks/_api/siteiconmanager/getsitelogo?type=%271%27&hash=638991681005641563" alt="Logo Essentra" style="height: 60px; object-fit: contain;">
+        </div>
+        <!-- FIM DA ALTERAÇÃO -->
+        
         <h1>AUTOMAÇÃO - ENVIO DE COTAÇÕES</h1>
 
         <div class="section">
@@ -174,9 +187,7 @@
                     <input type="date" id="data-inicio">
                 </div>
                 <div>
-                    <!-- INÍCIO DA ALTERAÇÃO / ALTERADO EM 13/10 (Data final padrão): Ajuste da label -->
                     <label>Até:</label>
-                    <!-- FIM DA ALTERAÇÃO -->
                     <input type="date" id="data-fim">
                 </div>
             </div>
@@ -232,9 +243,11 @@
                         + Adicionar Carteira
                     </button>
                     
-                    <button type="button" id="btnSalvarCarteiras" style="padding: 8px 12px; border: none; background: #0056b3; color: white; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                    <!-- INÍCIO DA ALTERAÇÃO / ALTERADO EM 13/10 (Identidade Visual): Background do botão alterado de azul para vermelho Essentra (#D0111F) -->
+                    <button type="button" id="btnSalvarCarteiras" style="padding: 8px 12px; border: none; background: #D0111F; color: white; border-radius: 4px; cursor: pointer; font-weight: bold;">
                         Salvar Configuração
                     </button>
+                    <!-- FIM DA ALTERAÇÃO -->
                 </div>
             </div>
         </div>
@@ -296,11 +309,9 @@
             const seteDiasAtras = new Date();
             seteDiasAtras.setDate(hoje.getDate() - 7);
 
-            // INÍCIO DA ALTERAÇÃO / ALTERADO EM 13/10 (Data final padrão): Ambas recebem a data de 7 dias atrás
             const dataSeteDiasStr = seteDiasAtras.toISOString().split('T')[0];
             dataFimInput.value = dataSeteDiasStr;
             dataInicioInput.value = dataSeteDiasStr;
-            // FIM DA ALTERAÇÃO
 
             document.getElementById('select-modelo-email').addEventListener('change', function() {
                 const modeloSelecionado = this.value;
